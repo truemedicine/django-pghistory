@@ -13,6 +13,7 @@ def install_on_migrate(using, **kwargs):  # pragma: no cover
     if config.install_context_func_on_migrate():
         Context = django.apps.apps.get_model("pghistory", "Context")
         Context.install_pgh_attach_context_func(using=using)
+        Context.install_pgh_set_context_func(using=using)
 
 
 class PGHistoryConfig(django.apps.AppConfig):

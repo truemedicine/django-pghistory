@@ -97,11 +97,13 @@ Remember that there will be a performance hit for maintaining the foreign key co
 
 ## Using a connection pooling proxy
 
-`pghistory` propagates request/context to PostgreSQL using `set_config` (session/connection-scoped GUC state) so that triggers/functions can read it when writing history.
+`pghistory` propagates request context to PostgreSQL using transaction-local GUC state so that triggers and functions can read it when writing history. By default, the client query calls `set_config` directly. RDS Proxy observes these calls and pins the client session.
 
-With connection poolers that multiplex clients onto shared connections (e.g., PgBouncer in **transaction** or **statement** pooling or RDS Proxy), session-scoped state may create **session pinning** (keeping a client bound to a single backend connection) under the assumption that the value of the `set_config` parameters may affect the query. This can reduce pool reuse and increase the number of backend connections needed.
+Set `PGHISTORY_CONTEXT_SETTER = "function"` to make the client query call the `_pgh_set_context(uuid, jsonb)` PostgreSQL function instead. The function performs the necessary `set_config` calls inside the database, preventing RDS Proxy from observing these context-setting operations and pinning the client session because of them.
 
-This does not pin read statements, but in write-heavy systems, this may necessitate significantly more connections between your pooler and your database. After enabling `pghistory`, review your pooler/proxy telemetry (e.g., pinning metrics, pool saturation, backend connection counts) to ensure pooling behavior matches expectations.
+Migration `0008_proxy_safe_context` installs the function. The function uses transaction-local settings, so context is discarded on commit or rollback. A missing function raises a database error instead of falling back to direct `set_config` calls or silently dropping history context.
+
+After enabling `pghistory`, review your pooler or proxy telemetry, including pinning metrics, pool saturation, and backend connection counts, to ensure pooling behavior matches expectations. Other statements issued by the application can still cause pinning.
 
 
 ## The `Events` Proxy Model

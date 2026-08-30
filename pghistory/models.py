@@ -69,6 +69,32 @@ class Context(models.Model):
                 """
             )
 
+    @classmethod
+    def install_pgh_set_context_func(cls, using: str = DEFAULT_DB_ALIAS) -> None:
+        """Install the transaction-local context setter used by the query wrapper."""
+        connection = connections[using]
+        if not connection.vendor.startswith("postgres"):  # pragma: no cover
+            return
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                CREATE OR REPLACE FUNCTION _pgh_set_context(
+                    _pgh_context_id UUID,
+                    _pgh_context_metadata JSONB
+                ) RETURNS VOID AS $$
+                BEGIN
+                    PERFORM pg_catalog.set_config(
+                        'pghistory.context_id', _pgh_context_id::TEXT, TRUE
+                    );
+                    PERFORM pg_catalog.set_config(
+                        'pghistory.context_metadata', _pgh_context_metadata::TEXT, TRUE
+                    );
+                END;
+                $$ LANGUAGE plpgsql;
+                """
+            )
+
 
 class EventQueryCompiler(SQLCompiler):
     def _get_cte(self):

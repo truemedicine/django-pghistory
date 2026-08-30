@@ -1,6 +1,18 @@
+import pytest
 from django.db import models
 
 from pghistory import config, constants, core
+
+
+def test_context_setter(settings):
+    assert config.context_setter() == "direct"
+
+    settings.PGHISTORY_CONTEXT_SETTER = "function"
+    assert config.context_setter() == "function"
+
+    settings.PGHISTORY_CONTEXT_SETTER = "invalid"
+    with pytest.raises(AssertionError):
+        config.context_setter()
 
 
 def test_admin_ordering(settings):

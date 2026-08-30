@@ -126,10 +126,15 @@ def _inject_history_context(
             id_placeholder = metadata_placeholder = "%s"
             params = (*context_params.values(), *(params or ()))
 
-        inject_vars = (
-            f"SELECT set_config('pghistory.context_id', {id_placeholder}, true), "
-            f"set_config('pghistory.context_metadata', {metadata_placeholder}, true); "
-        )
+        if config.context_setter() == "function":
+            inject_vars = (
+                f"SELECT _pgh_set_context({id_placeholder}::uuid, {metadata_placeholder}::jsonb); "
+            )
+        else:
+            inject_vars = (
+                f"SELECT set_config('pghistory.context_id', {id_placeholder}, true), "
+                f"set_config('pghistory.context_metadata', {metadata_placeholder}, true); "
+            )
 
     sql = inject_vars + sql
     sql = sql.encode() if is_bytes else sql
