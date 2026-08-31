@@ -71,6 +71,17 @@ def install_context_func_on_migrate() -> bool:
     return getattr(settings, "PGHISTORY_INSTALL_CONTEXT_FUNC_ON_MIGRATE", False)
 
 
+def context_setter() -> str:
+    """The mechanism used to set history context in PostgreSQL.
+
+    Returns:
+        Either ``"direct"`` or ``"function"``.
+    """
+    context_setter = getattr(settings, "PGHISTORY_CONTEXT_SETTER", "direct")
+    assert context_setter in ("direct", "function")
+    return context_setter
+
+
 def json_encoder() -> Type["JSONEncoder"]:
     """The JSON encoder when tracking context
 

@@ -18,9 +18,15 @@ The JSON encoder class or class path to use when serializing context.
 
 #### PGHISTORY_INSTALL_CONTEXT_FUNC_ON_MIGRATE
 
-Install the Postgres `_pgh_attach_context` function after migrations. Ensures pghistory context tracking works even without running migrations, typically for test suites.
+Install the Postgres `_pgh_attach_context` and `_pgh_set_context` functions after migrations. Ensures pghistory context tracking works even without running migrations, typically for test suites.
 
 *Default* `False`
+
+#### PGHISTORY_CONTEXT_SETTER
+
+The mechanism used to set transaction-local context in PostgreSQL. The default `"direct"` setting preserves the standard `set_config` calls. Set this to `"function"` to call the `_pgh_set_context(uuid, jsonb)` helper installed by migration `0008_proxy_safe_context`, preventing RDS Proxy from observing the underlying `set_config` calls.
+
+*Default* `"direct"`
 
 ## Event Models and Trackers
 
