@@ -99,3 +99,8 @@ For information on setting up django-pghistory for development and contributing 
 - @xaitec
 - @foobarna
 - @pmdevita
+
+### Custom backend integration
+
+See the [structured SQL prefix handoff](docs/command_handoff.md) for an opt-in
+backend protocol that preserves separate SQL statements and parameters.
