@@ -102,6 +102,8 @@ def _execute_wrapper(execute_result):
 def _inject_history_context(
     execute, sql: Union[str, bytes], params: Union[Dict[str, Any], Tuple[Any, ...]], many, context
 ):
+    original_sql = sql
+    prepend_sql = context.get("pg_prepend_sql")
     is_bytes = isinstance(sql, bytes)
     sql = sql.decode() if is_bytes else sql
     inject_vars = ""
@@ -117,7 +119,9 @@ def _inject_history_context(
 
         # psycopg does not allow params to be mixed (named and series), so we
         # try to preserve what it was.
-        if isinstance(params, dict):
+        if prepend_sql is not None:
+            id_placeholder = metadata_placeholder = "%s"
+        elif isinstance(params, dict):
             id_placeholder = "%(pghistory__context_id)s"
             metadata_placeholder = "%(pghistory__context_metadata)s"
             params.update(context_params)
@@ -128,13 +132,22 @@ def _inject_history_context(
 
         if config.context_setter() == "function":
             inject_vars = (
-                f"SELECT _pgh_set_context({id_placeholder}::uuid, {metadata_placeholder}::jsonb); "
+                f"SELECT _pgh_set_context({id_placeholder}::uuid, {metadata_placeholder}::jsonb)"
             )
         else:
             inject_vars = (
                 f"SELECT set_config('pghistory.context_id', {id_placeholder}, true), "
-                f"set_config('pghistory.context_metadata', {metadata_placeholder}, true); "
+                f"set_config('pghistory.context_metadata', {metadata_placeholder}, true)"
             )
+
+        if prepend_sql is not None:
+            prepend_sql(inject_vars, tuple(context_params.values()))
+        else:
+            inject_vars += "; "
+
+    if prepend_sql is not None:
+        # The backend owns prefix execution and exposes only the caller's results.
+        return execute(original_sql, params, many, context)
 
     sql = inject_vars + sql
     sql = sql.encode() if is_bytes else sql
